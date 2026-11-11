@@ -1,0 +1,84 @@
+version: 2
+
+models:
+  - name: int_transactions_sequenced
+    description: >
+      Transactions in recovered posting order, with the balance before each one and a
+      continuity flag. The source has no posting time and its ids are not chronological,
+      so the order is rebuilt from the running balance. See the model SQL for the rule.
+    data_tests:
+      - unique_combination_of_columns:
+          arguments: {combination_of_columns: [account_id, account_sequence]}
+      - reconciles_with:
+          name: sequenced_transactions_reconcile_to_staging
+          arguments:
+            compare_to: ref('stg_bank__transactions')
+            measure: "count(*)"
+            group_by: [posted_on]
+      - reconciles_with:
+          name: sequenced_amounts_reconcile_to_staging
+          arguments:
+            compare_to: ref('stg_bank__transactions')
+            measure: "sum(amount)"
+            group_by: [account_id]
+    columns:
+      - name: transaction_id
+        data_tests: [unique, not_null]
+      - name: account_sequence
+        description: 1 for the account's first posting, then consecutive.
+        data_tests: [not_null]
+      - name: is_balance_continuous
+        description: Previous reported balance + amount equals this reported balance, within one cent.
+
+  - name: int_account_parties
+    description: One row per account with its owner, optional disponent and highest-tier card.
+    columns:
+      - name: account_id
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments: {to: ref('stg_bank__accounts'), field: account_id}
+      - name: owner_client_id
+        data_tests: [not_null]
+
+unit_tests:
+  - name: same_day_postings_follow_the_balance_not_the_id
+    description: >
+      Ids 30 and 10 post on the same day as a credit and a debit. Credits post first, and
+      the debit with the higher remaining balance comes before the lower one, whatever
+      the ids say. Every step then reconciles.
+    model: int_transactions_sequenced
+    overrides:
+      macros:
+        is_incremental: false
+    given:
+      - input: ref('stg_bank__transactions')
+        rows:
+          - {transaction_id: 1, account_id: 7, posted_on: "2015-01-01", amount: 100.00, balance_after: 100.00}
+          - {transaction_id: 30, account_id: 7, posted_on: "2015-01-02", amount: -20.00, balance_after: 130.00}
+          - {transaction_id: 10, account_id: 7, posted_on: "2015-01-02", amount: 50.00, balance_after: 150.00}
+          - {transaction_id: 20, account_id: 7, posted_on: "2015-01-02", amount: -30.00, balance_after: 100.00}
+    expect:
+      rows:
+        - {transaction_id: 1, account_sequence: 1, is_balance_continuous: true}
+        - {transaction_id: 10, account_sequence: 2, is_balance_continuous: true}
+        - {transaction_id: 30, account_sequence: 3, is_balance_continuous: true}
+        - {transaction_id: 20, account_sequence: 4, is_balance_continuous: true}
+
+  - name: a_one_cent_rounding_gap_is_continuous_two_cents_is_not
+    model: int_transactions_sequenced
+    overrides:
+      macros:
+        is_incremental: false
+    given:
+      - input: ref('stg_bank__transactions')
+        rows:
+          - {transaction_id: 1, account_id: 8, posted_on: "2015-01-01", amount: 10.00, balance_after: 10.00}
+          - {transaction_id: 2, account_id: 8, posted_on: "2015-01-02", amount: 5.00, balance_after: 15.01}
+          - {transaction_id: 3, account_id: 8, posted_on: "2015-01-03", amount: 5.00, balance_after: 20.03}
+    expect:
+      rows:
+        - {transaction_id: 1, is_balance_continuous: true}
+        - {transaction_id: 2, is_balance_continuous: true}
+        - {transaction_id: 3, is_balance_continuous: false}

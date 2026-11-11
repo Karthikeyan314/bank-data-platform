@@ -1,0 +1,66 @@
+version: 2
+
+models:
+  - name: mart_monthly_kpis
+    description: >
+      Board-level monthly KPIs, one row per month. The refresh-over-refresh QC snapshots this
+      table after every run and compares it with the previous refresh.
+    config:
+      contract: {enforced: true}
+    data_tests:
+      - reconciles_with:
+          name: kpi_deposits_reconcile_to_account_months
+          arguments:
+            compare_to: ref('fct_account_monthly')
+            measure: "sum(total_deposits)"
+            compare_measure: "sum(closing_balance)"
+            tolerance: 0.001
+      - reconciles_with:
+          name: kpi_transactions_reconcile_to_fact
+          arguments:
+            compare_to: ref('fct_transactions')
+            measure: "sum(transaction_count)"
+            compare_measure: "count(*)"
+    columns:
+      - name: month_start
+        data_type: date
+        constraints: [{type: not_null}]
+        data_tests: [unique]
+      - name: open_accounts
+        data_type: bigint
+      - name: active_accounts
+        data_type: bigint
+        data_tests:
+          - expression_is_true:
+              arguments: {expression: "active_accounts <= open_accounts"}
+      - name: new_accounts
+        data_type: bigint
+      - name: total_deposits
+        data_type: decimal(18, 2)
+      - name: credits
+        data_type: decimal(18, 2)
+      - name: debits
+        data_type: decimal(18, 2)
+      - name: transaction_count
+        data_type: bigint
+      - name: overdrawn_accounts
+        data_type: bigint
+      - name: interest_credited
+        data_type: decimal(18, 2)
+      - name: loans_granted
+        data_type: bigint
+      - name: principal_granted
+        data_type: decimal(18, 2)
+
+exposures:
+  - name: monthly_board_pack
+    label: Monthly board pack
+    type: dashboard
+    maturity: medium
+    description: Monthly KPI pack for the board and the regulator. Deposits, activity, overdrafts and lending.
+    depends_on:
+      - ref('mart_monthly_kpis')
+      - ref('mart_loan_portfolio')
+    owner:
+      name: Analytics engineering
+      email: analytics@example.com

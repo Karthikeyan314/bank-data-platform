@@ -1,0 +1,27 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Data and run output (rebuilt by the pipeline, never committed)
+data/
+logs/
+reports/
+*.duckdb
+*.duckdb.wal
+
+# dbt
+transform/target/
+transform/logs/
+transform/dbt_packages/
+transform/.user.yml
+
+# Dagster
+orchestration/dagster/.dagster_home/
+orchestration/dagster/.tmp_dagster_home_*/
+
+# Secrets and local tooling
+.env
+.claude/

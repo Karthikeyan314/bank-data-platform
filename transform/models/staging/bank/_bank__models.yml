@@ -1,0 +1,155 @@
+version: 2
+
+models:
+  - name: stg_bank__accounts
+    description: Accounts, typed and decoded. One row per account.
+    columns:
+      - name: account_id
+        data_tests: [unique, not_null]
+      - name: branch_district_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('stg_bank__districts'), field: district_id}
+      - name: opened_on
+        data_tests: [not_null]
+      - name: statement_frequency
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments: {values: [monthly, weekly, per_transaction]}
+
+  - name: stg_bank__clients
+    description: Clients, typed and decoded. One row per client.
+    columns:
+      - name: client_id
+        data_tests: [unique, not_null]
+      - name: gender
+        data_tests:
+          - accepted_values:
+              arguments: {values: [female, male]}
+      - name: birth_date
+        data_tests:
+          - not_null
+          - expression_is_true:
+              arguments: {expression: "birth_date between date '1900-01-01' and date '2018-12-31'"}
+      - name: home_district_id
+        data_tests:
+          - relationships:
+              arguments: {to: ref('stg_bank__districts'), field: district_id}
+
+  - name: stg_bank__dispositions
+    description: Client-to-account roles. Only an owner can take a loan or set up a standing order.
+    data_tests:
+      - unique_combination_of_columns:
+          arguments: {combination_of_columns: [account_id, client_id]}
+    columns:
+      - name: disposition_id
+        data_tests: [unique, not_null]
+      - name: disposition_role
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments: {values: [owner, disponent]}
+      - name: account_id
+        data_tests:
+          - relationships:
+              arguments: {to: ref('stg_bank__accounts'), field: account_id}
+      - name: client_id
+        data_tests:
+          - relationships:
+              arguments: {to: ref('stg_bank__clients'), field: client_id}
+
+  - name: stg_bank__transactions
+    description: Posted transactions, typed. Amounts are signed; `balance_after` is the balance the bank reported after posting.
+    columns:
+      - name: transaction_id
+        data_tests: [unique, not_null]
+      - name: account_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('stg_bank__accounts'), field: account_id}
+      - name: posted_on
+        data_tests: [not_null]
+      - name: amount
+        data_tests:
+          - not_null
+          - expression_is_true:
+              name: transaction_sign_matches_type
+              arguments:
+                expression: "(transaction_type_code = 'C' and amount >= 0) or (transaction_type_code in ('D', 'P') and amount <= 0)"
+      - name: transaction_type_code
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments: {values: [C, D, P]}
+      - name: operation_code
+        data_tests:
+          - accepted_values:
+              arguments: {values: [CCW, CIC, COB, WIC, ROB]}
+      - name: category_code
+        data_tests:
+          - accepted_values:
+              arguments: {values: [IC, IO, PE, LO, HH, ST, IN]}
+
+  - name: stg_bank__loans
+    description: Loans. One loan per account at most.
+    columns:
+      - name: loan_id
+        data_tests: [unique, not_null]
+      - name: account_id
+        data_tests:
+          - unique
+          - relationships:
+              arguments: {to: ref('stg_bank__accounts'), field: account_id}
+      - name: term_months
+        data_tests:
+          - accepted_values:
+              arguments: {values: [12, 24, 36, 48, 60], quote: false}
+      - name: loan_status_code
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('loan_statuses'), field: loan_status_code}
+      - name: principal_amount
+        data_tests:
+          - expression_is_true:
+              name: loan_principal_equals_term_times_payment
+              arguments: {expression: "abs(principal_amount - term_months * monthly_payment) <= 1"}
+
+  - name: stg_bank__cards
+    description: Cards issued against a disposition.
+    columns:
+      - name: card_id
+        data_tests: [unique, not_null]
+      - name: disposition_id
+        data_tests:
+          - relationships:
+              arguments: {to: ref('stg_bank__dispositions'), field: disposition_id}
+      - name: card_type_code
+        data_tests:
+          - relationships:
+              arguments: {to: ref('card_types'), field: card_type_code}
+
+  - name: stg_bank__districts
+    description: Districts with demographics. Some 1995 figures are missing in the source and stay NULL.
+    columns:
+      - name: district_id
+        data_tests: [unique, not_null]
+      - name: region
+        data_tests: [not_null]
+
+  - name: stg_bank__permanent_orders
+    description: Standing payment orders, signed negative like debits.
+    columns:
+      - name: permanent_order_id
+        data_tests: [unique, not_null]
+      - name: account_id
+        data_tests:
+          - relationships:
+              arguments: {to: ref('stg_bank__accounts'), field: account_id}
+      - name: category_code
+        data_tests:
+          - accepted_values:
+              arguments: {values: [HH, IN, LE, LO]}

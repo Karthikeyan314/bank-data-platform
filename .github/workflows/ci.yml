@@ -1,0 +1,88 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - name: Python lint and format
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+      - name: SQL lint
+        run: uv run sqlfluff lint transform/models transform/tests/assert_*.sql
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked --all-extras
+      # Includes the chatbot tests, which also fail if chunks.jsonl is out of date.
+      - run: uv run pytest -m "not integration" -q
+
+  build:
+    # Builds the real warehouse end to end: download, gate, every dbt model and test, QC.
+    needs: [lint, unit-tests]
+    runs-on: ubuntu-latest
+    env:
+      DBT_TARGET: ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked --all-extras
+      - name: Cache source files
+        uses: actions/cache@v4
+        with:
+          path: data/landing
+          key: landing-${{ hashFiles('pipeline/sources.lock.json') }}
+      - name: Replay three monthly refreshes
+        run: uv run python -m pipeline.run --replay 2018-10-31 2018-12-31 --full-refresh
+      - name: Incremental build equals full rebuild
+        run: uv run pytest -m integration -q
+      - name: Validate Dagster definitions
+        working-directory: orchestration/dagster
+        run: PYTHONPATH=. uv run dagster definitions validate -m bank_dagster.definitions
+      - name: Build dbt docs
+        run: uv run dbt docs generate --project-dir transform --profiles-dir transform
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pipeline-output
+          path: |
+            reports/qc/
+            logs/alerts.jsonl
+            transform/target/index.html
+            transform/target/manifest.json
+            transform/target/catalog.json
+            transform/target/run_results.json
+
+  airflow-dag:
+    # Parses the DAG inside the real Airflow image, so import or syntax errors fail CI.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Airflow image
+        run: docker build -f orchestration/airflow/Dockerfile -t bank-airflow .
+      - name: Parse DAGs
+        run: |
+          docker run --rm -v "$PWD/orchestration/airflow/dags:/opt/airflow/dags" \
+            -e AIRFLOW__CORE__LOAD_EXAMPLES=false bank-airflow \
+            bash -c "airflow db migrate >/dev/null && airflow dags list-import-errors && airflow dags list | grep bank_monthly_refresh"

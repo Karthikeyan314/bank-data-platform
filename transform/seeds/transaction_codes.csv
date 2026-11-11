@@ -1,0 +1,17 @@
+code_type,code,description,source_code_cz
+trans_type,C,Credit,PRIJEM
+trans_type,D,Debit,VYDAJ
+trans_type,P,Cash withdrawal,VYBER
+operation,CCW,Credit card withdrawal,VYBER KARTOU
+operation,CIC,Credit in cash,VKLAD
+operation,COB,Collection from another bank,PREVOD Z UCTU
+operation,WIC,Withdrawal in cash,VYBER
+operation,ROB,Remittance to another bank,PREVOD NA UCET
+category,IC,Interest credited,UROK
+category,IO,Overdraft interest,SANKC. UROK
+category,PE,Pension,DUCHOD
+category,LO,Loan payment,UVER
+category,HH,Household payment,SIPO
+category,ST,Statement fee,SLUZBY
+category,IN,Insurance payment,POJISTNE
+category,LE,Leasing payment,LEASING

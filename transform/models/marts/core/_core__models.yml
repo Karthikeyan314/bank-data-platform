@@ -1,0 +1,113 @@
+version: 2
+
+models:
+  - name: dim_date
+    description: Calendar from 2013-01-01 to 2018-12-31.
+    columns:
+      - name: date_day
+        data_tests: [unique, not_null]
+
+  - name: dim_district
+    description: Districts with demographics and a capital, urban or rural type.
+    columns:
+      - name: district_id
+        data_tests: [unique, not_null]
+      - name: district_type
+        data_tests:
+          - accepted_values:
+              arguments: {values: [capital, urban, rural]}
+
+  - name: dim_client
+    description: Clients with age at the end of the observed period and home region.
+    columns:
+      - name: client_id
+        data_tests: [unique, not_null]
+      - name: age_at_period_end
+        description: Age at the end of the observed period. Junior-account disponents can be young children.
+        data_tests:
+          - expression_is_true:
+              arguments: {expression: "age_at_period_end between 0 and 110"}
+
+  - name: dim_account
+    description: >
+      Account dimension. Flattens owner, disponent, best card, loan and standing orders to
+      one row per account, so facts join to it without fanning out.
+    data_tests:
+      - reconciles_with:
+          name: dim_account_has_every_staged_account
+          arguments:
+            compare_to: ref('stg_bank__accounts')
+            measure: "count(*)"
+    columns:
+      - name: account_id
+        data_tests: [unique, not_null]
+      - name: owner_client_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_client'), field: client_id}
+      - name: branch_district_id
+        data_tests:
+          - relationships:
+              arguments: {to: ref('dim_district'), field: district_id}
+
+  - name: fct_transactions
+    description: Transaction fact at posting grain, incremental, with decoded codes and recovered posting order.
+    data_tests:
+      - unique_combination_of_columns:
+          arguments: {combination_of_columns: [account_id, account_sequence]}
+      - reconciles_with:
+          name: fct_transactions_reconcile_to_staging
+          arguments:
+            compare_to: ref('stg_bank__transactions')
+            measure: "sum(amount)"
+            group_by: [posted_on]
+            tolerance: 0.001
+    columns:
+      - name: transaction_id
+        data_tests: [unique, not_null]
+      - name: account_id
+        data_tests:
+          - relationships:
+              arguments: {to: ref('dim_account'), field: account_id}
+      - name: posted_on
+        data_tests:
+          - relationships:
+              arguments: {to: ref('dim_date'), field: date_day}
+      - name: transaction_type
+        data_tests: [not_null]
+      - name: credit_amount
+        data_tests:
+          - expression_is_true:
+              arguments: {expression: "credit_amount >= 0 and debit_amount >= 0 and credit_amount * debit_amount = 0"}
+
+  - name: fct_account_monthly
+    description: >
+      Account-month snapshot from opening to the last month of data, including quiet months.
+      Opening balance is last month's closing; closing is the bank's reported balance.
+    data_tests:
+      - unique_combination_of_columns:
+          arguments: {combination_of_columns: [account_id, month_start]}
+      - reconciles_with:
+          name: monthly_flows_reconcile_to_transactions
+          arguments:
+            compare_to: ref('fct_transactions')
+            measure: "sum(net_flow)"
+            compare_measure: "sum(amount)"
+            group_by: [account_id]
+            tolerance: 0.001
+      - expression_is_true:
+          name: monthly_rounding_adjustment_is_cents
+          description: >
+            Opening + net flow must land on the reported closing balance, within a cent per
+            posting. Months holding one of the known unorderable ties are excluded.
+          arguments:
+            expression: "abs(rounding_adjustment) <= 0.01 * transaction_count + 0.001"
+            where: "balance_breaks = 0"
+    columns:
+      - name: closing_balance
+        data_tests: [not_null]
+      - name: account_id
+        data_tests:
+          - relationships:
+              arguments: {to: ref('dim_account'), field: account_id}

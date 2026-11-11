@@ -1,0 +1,27 @@
+version: 2
+
+seeds:
+  - name: transaction_codes
+    description: Decodes the transaction type, operation and category codes. `source_code_cz` keeps the original Czech value from the PKDD'99 release.
+    config:
+      column_types: {code_type: varchar, code: varchar, description: varchar, source_code_cz: varchar}
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [code_type, code]
+
+  - name: loan_statuses
+    description: Loan status codes with the risk flags reporting uses. Status B and D are the default population.
+    config:
+      column_types: {loan_status_code: varchar, is_contract_finished: boolean, is_in_default: boolean}
+    columns:
+      - name: loan_status_code
+        data_tests: [unique, not_null]
+
+  - name: card_types
+    description: Card product tiers.
+    config:
+      column_types: {card_type_code: varchar, card_tier_rank: integer}
+    columns:
+      - name: card_type_code
+        data_tests: [unique, not_null]

@@ -1,0 +1,25 @@
+# Local and CI run on DuckDB. Run dbt from the repository root (the default path is relative
+# to the working directory) or set BANK_WAREHOUSE to an absolute path.
+# The Snowflake target shows how the same project is pointed at a cloud warehouse; it reads
+# credentials from environment variables only, and is not exercised by CI.
+bank:
+  target: "{{ env_var('DBT_TARGET', 'dev') }}"
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('BANK_WAREHOUSE', 'data/warehouse.duckdb') }}"
+      threads: 4
+    ci:
+      type: duckdb
+      path: "{{ env_var('BANK_WAREHOUSE', 'data/warehouse.duckdb') }}"
+      threads: 4
+    snowflake:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT', '') }}"
+      user: "{{ env_var('SNOWFLAKE_USER', '') }}"
+      authenticator: "{{ env_var('SNOWFLAKE_AUTHENTICATOR', 'externalbrowser') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'TRANSFORMER') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'TRANSFORM_WH') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'BANK') }}"
+      schema: analytics
+      threads: 8

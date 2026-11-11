@@ -1,0 +1,5 @@
+loan_status_code,loan_status,is_contract_finished,is_in_default,risk_bucket
+A,Finished - repaid,true,false,performing
+B,Finished - not repaid,true,true,written_off
+C,Running - current,false,false,performing
+D,Running - in arrears,false,true,non_performing

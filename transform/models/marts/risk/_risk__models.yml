@@ -1,0 +1,75 @@
+version: 2
+
+models:
+  - name: fct_loans
+    description: One row per loan with status, risk flags, ledger repayments and estimated outstanding principal.
+    config:
+      contract: {enforced: true}
+    columns:
+      - name: loan_id
+        data_type: integer
+        constraints: [{type: not_null}]
+        data_tests: [unique]
+      - name: account_id
+        data_type: integer
+        data_tests:
+          - unique
+          - relationships:
+              arguments: {to: ref('dim_account'), field: account_id}
+      - name: owner_client_id
+        data_type: integer
+      - name: branch_district_id
+        data_type: integer
+      - name: granted_on
+        data_type: date
+      - name: vintage_quarter
+        data_type: varchar
+      - name: principal_amount
+        data_type: decimal(14, 2)
+        data_tests:
+          - expression_is_true:
+              arguments: {expression: "principal_amount > 0"}
+      - name: term_months
+        data_type: integer
+      - name: monthly_payment
+        data_type: decimal(14, 2)
+      - name: loan_status_code
+        data_type: varchar
+      - name: loan_status
+        data_type: varchar
+      - name: risk_bucket
+        data_type: varchar
+        data_tests:
+          - accepted_values:
+              arguments: {values: [performing, non_performing, written_off]}
+      - name: is_contract_finished
+        data_type: boolean
+      - name: is_in_default
+        data_type: boolean
+      - name: repaid_amount
+        data_type: decimal(14, 2)
+      - name: repayment_count
+        data_type: integer
+      - name: last_repayment_on
+        data_type: date
+      - name: outstanding_principal
+        data_type: decimal(14, 2)
+        data_tests:
+          - expression_is_true:
+              arguments: {expression: "outstanding_principal between 0 and principal_amount"}
+      - name: months_on_book
+        data_type: integer
+
+  - name: mart_loan_portfolio
+    description: Loan book by vintage quarter and region, with default rates.
+    data_tests:
+      - unique_combination_of_columns:
+          arguments: {combination_of_columns: [vintage_quarter, region]}
+      - reconciles_with:
+          name: portfolio_principal_reconciles_to_loans
+          arguments:
+            compare_to: ref('fct_loans')
+            measure: "sum(principal_amount)"
+      - expression_is_true:
+          name: default_rate_is_a_share
+          arguments: {expression: "default_rate between 0 and 1"}

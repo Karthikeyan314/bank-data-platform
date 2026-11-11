@@ -1,0 +1,52 @@
+version: 2
+
+sources:
+  - name: bank
+    description: >
+      Raw extract of a Czech retail bank (PKDD'99 Discovery Challenge, Berka and Sochorova),
+      landed untouched by `pipeline.load`. Every column is text; typing happens in staging.
+    schema: raw
+    config:
+      loaded_at_field: _loaded_at
+      freshness:
+        warn_after: {count: 26, period: hour}
+        error_after: {count: 48, period: hour}
+    tables:
+      - name: account
+        description: One row per account, with the branch district and statement frequency.
+        columns:
+          - name: account_id
+            data_tests: [unique, not_null]
+      - name: client
+        columns:
+          - name: client_id
+            data_tests: [unique, not_null]
+      - name: disposition
+        description: Links clients to accounts. Each account has exactly one owner and at most one disponent.
+        columns:
+          - name: disp_id
+            data_tests: [unique, not_null]
+      - name: permanent_order
+        description: Standing payment orders. Reference data, so it is not replayed by date.
+        config:
+          freshness: null
+      - name: transaction
+        description: One row per posted transaction, about 1.06M rows over 2013 to 2018.
+        columns:
+          - name: trans_id
+            data_tests: [unique, not_null]
+      - name: loan
+        columns:
+          - name: loan_id
+            data_tests: [unique, not_null]
+      - name: card
+        columns:
+          - name: card_id
+            data_tests: [unique, not_null]
+      - name: district
+        description: Branch and client districts with 1995 and 1996 demographics.
+        config:
+          freshness: null
+        columns:
+          - name: district_id
+            data_tests: [unique, not_null]

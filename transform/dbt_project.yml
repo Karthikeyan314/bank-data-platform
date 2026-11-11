@@ -1,0 +1,51 @@
+name: bank
+version: "1.0.0"
+profile: bank
+require-dbt-version: [">=1.10.0", "<2.0.0"]
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+analysis-paths: ["analyses"]
+
+clean-targets: ["target", "dbt_packages"]
+
+flags:
+  require_explicit_package_overrides_for_builtin_materializations: true
+
+vars:
+  # Same-step balance reconciliation tolerance. The mirror divided amounts and
+  # balances by 10 and rounded each independently, so one step can be a cent off.
+  balance_tolerance: 0.011
+  # Days re-merged on each incremental run, to absorb late-posted transactions.
+  incremental_lookback_days: 7
+  # Share of transactions allowed to break balance continuity before the build fails.
+  balance_break_error_share: 0.0001
+
+models:
+  bank:
+    +persist_docs: {relation: true, columns: true}
+    staging:
+      +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: table
+      +schema: intermediate
+    marts:
+      +materialized: table
+      core:
+        +schema: core
+      risk:
+        +schema: risk
+      reporting:
+        +schema: reporting
+
+seeds:
+  bank:
+    +schema: reference
+
+data_tests:
+  bank:
+    +store_failures: true
+    +schema: test_failures

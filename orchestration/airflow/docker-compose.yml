@@ -1,0 +1,27 @@
+# Local Airflow for the monthly refresh. Single container (`airflow standalone`), which is
+# fine for a laptop demo; production would run the scheduler, API server and workers apart.
+#
+#   docker compose -f orchestration/airflow/docker-compose.yml up --build
+#   open http://localhost:8080
+#
+# Run from the repository root. Data and the warehouse persist in ./data on the host.
+services:
+  airflow:
+    build:
+      context: ../..
+      dockerfile: orchestration/airflow/Dockerfile
+    command: standalone
+    ports:
+      - "8080:8080"
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+      # Local demo only: every user is an admin, no login prompt.
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "true"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ../../data:/opt/bank/data
+      - ../../logs:/opt/bank/logs
+      - ../../reports:/opt/bank/reports

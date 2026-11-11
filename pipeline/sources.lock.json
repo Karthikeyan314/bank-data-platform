@@ -1,0 +1,13 @@
+{
+  "commit": "0dd97f4b794102fc434587fc67c41cb3d0cd6c97",
+  "files": {
+    "fin_account.tsv": "914a41291bb4c96f1bf9fca2e6b9f0dbbc8852d14dfc73ba6c189dcb22ffc18a",
+    "fin_client.tsv": "4342130171c96f513b7873709c9f3a82f195337f4828733a127055010bf91974",
+    "fin_disp.tsv": "d027235fb0a4ee70fa66afc509d5d6d996a89c52688d19ed74bea6cdb81a4d83",
+    "fin_order.tsv": "2c4e680aab5dd5a3ad98058584b58f1d113e596065d55ce7a89d5b74654ac70f",
+    "fin_trans.tsv": "24706c23e3fc93c51e6915b32b696ff8b4ca45b51f115aff497dfc152e0c6517",
+    "fin_loan.tsv": "8c3d431c313dd259c54ebe6f8c502fd555e3421f0a03f5e79edf3e388ebbf62a",
+    "fin_card.tsv": "5282c1c58f5b77930ecac67c29df36b77045dba84a15a6dc01d66d01f823331c",
+    "fin_district.tsv": "63a1a928cb49c3d3b7c52116ab5c7bfdf5e9872b20a528e226ee7aa219b2c62c"
+  }
+}
