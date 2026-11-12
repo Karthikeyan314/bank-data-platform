@@ -33,7 +33,6 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --locked --all-extras
-      # Includes the chatbot tests, which also fail if chunks.jsonl is out of date.
       - run: uv run pytest -m "not integration" -q
 
   build:

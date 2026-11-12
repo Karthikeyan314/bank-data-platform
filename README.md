@@ -8,9 +8,9 @@ The data is the PKDD'99 Czech bank dataset: 4,500 accounts, 5,369 clients, 682 l
 |---|---|
 | **Stack** | Python 3.12, dbt Core 1.12, DuckDB, Airflow 3.4 (Docker), Dagster 1.13, GitHub Actions, SQLFluff, Ruff, pytest, uv |
 | **dbt project** | 19 models, 121 data tests, 2 unit tests, 3 seeds, 8 sources, 1 exposure, 2 enforced contracts |
-| **Quality** | 8 gate checks (block or alert), refresh-over-refresh QC, 17 Python tests, including one that proves incremental builds equal a full rebuild |
+| **Quality** | 8 gate checks (block or alert), refresh-over-refresh QC, 7 Python tests, including one that proves incremental builds equal a full rebuild |
 | **Runs** | `make run` for one build, `make replay` for twelve simulated monthly refreshes |
-| **Assistant** | A Streamlit chatbot that answers questions about this project from its own docs and code (`chatbot/`), built for Hugging Face Spaces |
+| **Assistant** | Ask questions about this project and the rest of my work in the [portfolio assistant](https://huggingface.co/spaces/butterfingers1403/portfolio-assistant) ([code](https://github.com/Karthikeyan314/portfolio-assistant)) |
 
 ## Architecture
 
@@ -141,7 +141,7 @@ GitHub Actions runs lint (Ruff, SQLFluff) and unit tests on every push. It then 
 
 ## Portfolio assistant
 
-`chatbot/` is a small retrieval-augmented chatbot for recruiters and reviewers. `build_knowledge.py` turns this repository into about 60 passages: README sections, every dbt model's description, design note and tests, the gate checks and module docstrings. Questions are matched with BM25, and an open model on Hugging Face Inference Providers answers from the top passages only, citing the files. Without a token, the app shows the passages instead. A test fails CI if the docs change but the knowledge base isn't rebuilt. Deployment steps are in [chatbot/README.md](chatbot/README.md).
+This project is one of the sources for my [portfolio assistant](https://huggingface.co/spaces/butterfingers1403/portfolio-assistant), a chatbot that answers questions about my work. It learns from this README, so questions about the pipeline are answered from it and cite it. The code is in [Karthikeyan314/portfolio-assistant](https://github.com/Karthikeyan314/portfolio-assistant).
 
 ## Repository layout
 
@@ -150,8 +150,7 @@ pipeline/                 ingest, load, quality gate, dbt runner, refresh QC, al
 transform/                dbt project: models, seeds, macros, generic and singular tests
 orchestration/airflow/    DAG, Dockerfile, docker-compose
 orchestration/dagster/    asset definitions
-chatbot/                  Streamlit portfolio assistant for Hugging Face Spaces
-tests/                    pytest: pipeline, QC, chatbot and the incremental-equivalence test
+tests/                    pytest: pipeline, QC and the incremental-equivalence test
 .github/workflows/ci.yml  lint, test, build, DAG parse
 ```
 
