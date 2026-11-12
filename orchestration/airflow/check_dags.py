@@ -17,7 +17,8 @@ EXPECTED = {"bank_monthly_refresh"}
 
 
 def main(folder: str) -> int:
-    bag = DagBag(dag_folder=folder, include_examples=False)
+    # Examples are off through AIRFLOW__CORE__LOAD_EXAMPLES; newer DagBags dropped the kwarg.
+    bag = DagBag(dag_folder=folder)
     for path, error in bag.import_errors.items():
         print(f"IMPORT ERROR {path}:\n{error}")
     missing = EXPECTED - set(bag.dag_ids)
