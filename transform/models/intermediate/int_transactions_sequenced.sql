@@ -46,7 +46,10 @@ with new_rows as (
                 select {{ dbt.dateadd('day', -1 * var('incremental_lookback_days'), 'max(posted_on)') }}
                 from {{ this }}
             )
-        qualify row_number() over (partition by account_id order by account_sequence desc) = 1
+        qualify row_number() over (
+                partition by account_id
+                order by account_sequence desc
+            ) = 1
     ),
 {% endif %}
 
@@ -70,7 +73,10 @@ chained as (
         {% if is_incremental() %}
             coalesce(a.anchor_sequence, 0) + o.window_sequence as account_sequence,
             coalesce(
-                lag(o.balance_after) over (partition by o.account_id order by o.window_sequence),
+                lag(o.balance_after) over (
+                    partition by o.account_id
+                    order by o.window_sequence
+                ),
                 a.anchor_balance
             ) as balance_before_reported
         {% else %}

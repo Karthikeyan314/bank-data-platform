@@ -45,7 +45,8 @@ best_card as (
     from cards
     inner join dispositions as d on cards.disposition_id = d.disposition_id
     qualify row_number() over (
-            partition by d.account_id order by cards.card_tier_rank desc, cards.issued_on asc
+            partition by d.account_id
+            order by cards.card_tier_rank desc, cards.issued_on asc
         ) = 1
 )
 

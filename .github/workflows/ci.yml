@@ -83,6 +83,8 @@ jobs:
         run: docker build -f orchestration/airflow/Dockerfile -t bank-airflow .
       - name: Parse DAGs
         run: |
-          docker run --rm -v "$PWD/orchestration/airflow/dags:/opt/airflow/dags" \
+          docker run --rm \
+            -v "$PWD/orchestration/airflow/dags:/opt/airflow/dags" \
+            -v "$PWD/orchestration/airflow/check_dags.py:/opt/airflow/check_dags.py" \
             -e AIRFLOW__CORE__LOAD_EXAMPLES=false bank-airflow \
-            bash -c "airflow db migrate >/dev/null && airflow dags list-import-errors && airflow dags list | grep bank_monthly_refresh"
+            python /opt/airflow/check_dags.py /opt/airflow/dags

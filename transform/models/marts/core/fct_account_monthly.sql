@@ -80,7 +80,8 @@ joined as (
         ma.min_balance,
         ma.max_balance,
         last_value(mc.closing_balance ignore nulls) over (
-            partition by am.account_id order by am.month_start
+            partition by am.account_id
+            order by am.month_start
             rows between unbounded preceding and current row
         ) as closing_balance
     from account_months as am
@@ -94,7 +95,10 @@ with_opening as (
     select
         *,
         coalesce(
-            lag(closing_balance) over (partition by account_id order by month_start),
+            lag(closing_balance) over (
+                partition by account_id
+                order by month_start
+            ),
             -- First month: the balance before the account's first posting (usually 0).
             closing_balance - net_flow
         ) as opening_balance
